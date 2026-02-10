@@ -43,11 +43,28 @@ Parquet – columnar storage format
 docker compose up -d
 ```
 
-2️⃣ Produce sample Kafka events
+2️⃣ Create the Kafka topic (once) and produce sample Kafka events
+
+```
+docker exec -it kafka \
+kafka-topics.sh \
+--bootstrap-server kafka:9092 \
+--create \
+--topic orders \
+--partitions 1 \
+--replication-factor 1
+```
+
+then
 
 ```
 docker exec -it kafka \
   python /producer.py
+```
+You should see messages like:
+
+```
+Sent event: {'user_id': 'u3', 'amount': 213.45, 'timestamp': '2026-02-09T14:12:33.123Z'}
 ```
 
 3️⃣ Run the Spark streaming job
@@ -59,7 +76,17 @@ docker exec -it spark-master-kafka-demo \
   /opt/spark/app/ecommerce_tracking.py
 ```
 
-You should see real-time aggregations printed to the console.
+You should see real-time aggregations printed to the console, leave it running.
+
+Back in the Spark streaming terminal, you should see:
+
+```
+-------------------------------------------
+Batch: 3
+-------------------------------------------
+| window.start       | window.end         | total_revenue |
+| 2026-02-09 14:12:00| 2026-02-09 14:13:00| 845.67        |
+```
 
 📊 **Output Data**
 
@@ -73,7 +100,9 @@ Read the data in batch mode
 
 ```
 docker exec -it spark-master-kafka-demo \
-  /opt/spark/bin/pyspark
+/opt/spark/bin/pyspark \
+--master spark://spark-master-kafka-demo:7077
+
 ```
 
 ```

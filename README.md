@@ -60,3 +60,51 @@ docker exec -it spark-master-kafka-demo \
 ```
 
 You should see real-time aggregations printed to the console.
+
+📊 Output Data
+
+Processed events are written as Parquet files:
+
+```
+/opt/spark/data/refined_orders/
+```
+
+Read the data in batch mode
+
+```
+docker exec -it spark-master-kafka-demo \
+  /opt/spark/bin/pyspark
+```
+
+```
+df = spark.read.parquet("/opt/spark/data/refined_orders")
+df.show(truncate=False)
+```
+🧠 What This Project Demonstrates
+
+End-to-end streaming pipeline design
+
+Spark Structured Streaming semantics
+
+Kafka offset management & fault tolerance
+
+Dockerized data infrastructure
+
+Transition from streaming to batch analytics
+
+🧹 Notes
+
+Checkpoint and data directories are not committed to GitHub.
+
+This project is intended for local development and learning purposes.
+
+📌 Possible improvements
+
+Add schema evolution handling
+
+Write aggregated output to a database
+
+Add monitoring with Spark UI & Kafka metrics
+
+Deploy to cloud storage (S3 / GCS / Azure Blob)
+

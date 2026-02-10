@@ -46,13 +46,7 @@ docker compose up -d
 2️⃣ Create the Kafka topic (once) and produce sample Kafka events
 
 ```
-docker exec -it kafka \
-kafka-topics.sh \
---bootstrap-server kafka:9092 \
---create \
---topic orders \
---partitions 1 \
---replication-factor 1
+docker exec -it kafka /opt/kafka/bin/kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 ```
 
 then

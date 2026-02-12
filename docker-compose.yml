@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  kafka:
+    image: apache/kafka
+    container_name: kafka
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s # Kafka starts before checks begin
+    volumes:
+      - kafka-data:/kafka-logs
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  spark-master:
+    build: ./spark
+    container_name: spark-master-kafka-demo
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark/app:/opt/spark/app
+      - spark-shared-data:/opt/spark/data # Named Volume for Parquet files
+
+  spark-worker-1:
+    build: ./spark
+    container_name: spark-worker-1-kafka-demo
+    depends_on:
+      - spark-master
+    volumes:
+      - spark-shared-data:/opt/spark/data
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master-kafka-demo:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+
+  spark-worker-2:
+    build: ./spark
+    container_name: spark-worker-2-kafka-demo
+    depends_on:
+      - spark-master
+    volumes:
+      - spark-shared-data:/opt/spark/data
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master-kafka-demo:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+
+  kafka-producer:
+    build: 
+      context: .
+      dockerfile: /spark/Dockerfile.producer
+    container_name: kafka-producer
+    depends_on:
+      kafka:
+        condition: service_healthy # Wait for healthcheck
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  kafka-data:
+  spark-shared-data: 

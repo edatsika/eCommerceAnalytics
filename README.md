@@ -119,6 +119,12 @@ docker exec -it spark-master-kafka-demo \
 df = spark.read.parquet("/opt/spark/data/refined_orders")
 df.show(truncate=False)
 ```
+
+To stop and clean up:
+```
+docker-compose down
+```
+
 🧠**What this simple project demonstrates**
 
 - End-to-end streaming pipeline design

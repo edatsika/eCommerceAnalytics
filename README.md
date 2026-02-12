@@ -1,4 +1,4 @@
-# E-commerce-order-processing-demo
+# eCcommerce order processing demo
 
 This project demonstrates a real-time data processing pipeline using Apache Kafka and Apache Spark Structured Streaming, fully containerized with Docker Compose.
 Streaming e-commerce order events are produced to Kafka, processed in real time by Spark, aggregated using event-time windows, and persisted to Parquet for downstream analytics.
@@ -35,12 +35,18 @@ Parquet – columnar storage format
 
   Parquet files for batch analytics
 
+
 🚀 **How to Run**
 
 1️⃣ Start all services
 
 ```
-docker compose up -d
+docker-compose up --build -d
+```
+
+Check Kafka prodcuer logs:
+```
+docker logs -f kafka-producer
 ```
 
 2️⃣ Create the Kafka topic (once) and produce sample Kafka events
@@ -69,7 +75,17 @@ docker exec -it spark-master-kafka-demo \
   --master spark://spark-master-kafka-demo:7077 \
   /opt/spark/app/ecommerce_tracking.py
 ```
+or with specific arguments:
 
+```
+docker exec -it spark-master-kafka-demo \
+  /opt/spark/bin/spark-submit \
+  --master spark://spark-master-kafka-demo:7077 \
+  --executor-memory 512m \
+  --total-executor-cores 2 \
+  --conf "spark.executor.instances=2" \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /opt/spark/app/ecommerce_tracking.py
+```
 You should see real-time aggregations printed to the console, leave it running.
 
 Back in the Spark streaming terminal, you should see:

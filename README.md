@@ -1,6 +1,6 @@
-# eCcommerce order processing demo
+# Real-Time eCommerce Analytics Pipeline
 
-An end-to-end data engineering pipeline designed to process e-commerce order streams in real-time. 
+A demo end-to-end data engineering pipeline designed to process e-commerce order streams in real-time. 
 This project implements a **Lambda-style architecture**, providing both a **Hot Path** (Real-time monitoring via InfluxDB & Grafana) and a **Cold Path** (Batch analytics via Parquet Data Lake).
 
 ## 📐 Architecture & Data Flow

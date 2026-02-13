@@ -84,9 +84,9 @@ Batch: 3
 
 📦 Features
 
-    - Fault Tolerance: Χρήση Checkpointing για άμεση ανάκαμψη από αστοχία.
-    - Late Data Handling: Το Watermarking διασφαλίζει ότι τα "αργοπορημένα" events δεν θα αλλοιώσουν τα τρέχοντα windows.
-    - Automated Submission: Το Spark job υποβάλλεται αυτόματα μόλις ο Kafka είναι ready.
+    - Fault Tolerance: Utilization of Checkpointing for immediate recovery from failures
+    - Late Data Handling: Watermarking ensures that "late" events do not compromise the integrity of current windows
+    - Automated Submission: The Spark job is automatically submitted once Kafka is ready
 
 
 📊 **Batch Analytics (Cold Storage)**

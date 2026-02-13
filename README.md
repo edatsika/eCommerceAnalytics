@@ -1,73 +1,59 @@
 # eCcommerce order processing demo
 
-This project demonstrates a real-time data processing pipeline using Apache Kafka and Apache Spark Structured Streaming, fully containerized with Docker Compose.
-Streaming e-commerce order events are produced to Kafka, processed in real time by Spark, aggregated using event-time windows, and persisted to Parquet for downstream analytics.
+A production-grade, end-to-end data engineering pipeline designed to process e-commerce order streams in real-time. 
+This project implements a **Lambda-style architecture**, providing both a **Hot Path** (Real-time monitoring via InfluxDB & Grafana) and a **Cold Path** (Batch analytics via Parquet Data Lake).
 
-📐 **Architecture**
+## 📐 Architecture & Data Flow
+1. **Ingestion:** A Python producer simulates realistic order events (JSON) and publishes them to the Kafka topic `orders`.
+2. **Processing:** Apache Spark (Structured Streaming) consumes the stream, applying **1-minute Tumbling Windows** and **Watermarking** (2 min) for late data management.
+3. **Hot Path (Monitoring):** Aggregated metrics are pushed to **InfluxDB** for sub-second visualization in **Grafana**.
+4. **Cold Path (Storage):** Raw events are persisted in **Parquet format** (columnar storage) for downstream batch processing and historical analysis.
 
-Kafka Producer --> Kafka Topic (orders) --> Spark Structured Streaming --> Parquet Sink (file-based data lake)
+## 🧰 Tech Stack
+- **Apache Kafka** (Broker & KRaft mode)
+- **Apache Spark 3.5** (Structured Streaming engine)
+- **InfluxDB 2.7** (Time-series Database)
+- **Grafana** (Observability & Dashboards)
+- **Docker & Docker Compose** (Infrastructure orchestration)
 
-🧰 **Tech Stack**
-
-Apache Kafka – real-time event ingestion
-
-Apache Spark (Structured Streaming) – stream processing & aggregation
-
-PySpark – Spark application code
-
-Docker & Docker Compose – containerized infrastructure
-
-Parquet – columnar storage format
-
-📦 **Features**
-
-- Real-time ingestion from Kafka
-
-- Event-time windowed aggregations (1-minute tumbling windows)
-
-- Watermarking for late data handling
-
-- Fault-tolerant processing using Spark checkpoints
-
-- Dual sinks:
-
-  Console output for monitoring
-
-  Parquet files for batch analytics
+## 📦 Key Engineering Features
+- **Fault Tolerance:** Checkpointing enabled to ensure recovery from the last processed offset in case of failure
+- **Late Data Handling:** Implemented Watermarking to handle out-of-order events and prevent memory leaks
+- **Automated Orchestration:** Custom entrypoints ensure the Spark job is submitted only when Kafka and InfluxDB are fully healthy
+- **Resource Management:** Optimized Docker resource limits for local development
 
 
-🚀 **How to Run**
+🚀 **How to run**
 
-1️⃣ Start all services
+Deploy the stack:
 
 ```
 docker-compose up --build -d
 ```
 
-Check Kafka prodcuer logs:
+🔍 **Monitoring the pipeline**
+
+Spark Console (Live Aggregations):
+```
+docker logs -f spark-submit-job
+```
+    
+Kafka Producer Logs:
 ```
 docker logs -f kafka-producer
 ```
-
-2️⃣ Create the Kafka topic (once) and produce sample Kafka events
-
+    
+Grafana Dashboard:
 ```
-docker exec -it kafka /opt/kafka/bin/kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+Go to http://localhost:3000 (admin/admin)
 ```
-
-then
-
+    
+InfluxDB UI:
 ```
-docker exec -it kafka \
-  python /producer.py
-```
-You should see messages like:
-
-```
-Sent event: {'user_id': 'u3', 'amount': 213.45, 'timestamp': '2026-02-09T14:12:33.123Z'}
+Go to http://localhost:8086 (admin/password123)
 ```
 
-3️⃣ Run the Spark streaming job
+Run the Spark streaming job
 
 ```
 docker exec -it spark-master-kafka-demo \
@@ -88,8 +74,6 @@ docker exec -it spark-master-kafka-demo \
 ```
 You should see real-time aggregations printed to the console, leave it running.
 
-Back in the Spark streaming terminal, you should see:
-
 ```
 -------------------------------------------
 Batch: 3
@@ -98,7 +82,14 @@ Batch: 3
 | 2026-02-09 14:12:00| 2026-02-09 14:13:00| 845.67        |
 ```
 
-📊 **Output Data**
+📦 Features
+
+    - Fault Tolerance: Χρήση Checkpointing για άμεση ανάκαμψη από αστοχία.
+    - Late Data Handling: Το Watermarking διασφαλίζει ότι τα "αργοπορημένα" events δεν θα αλλοιώσουν τα τρέχοντα windows.
+    - Automated Submission: Το Spark job υποβάλλεται αυτόματα μόλις ο Kafka είναι ready.
+
+
+📊 **Batch Analytics (Cold Storage)**
 
 Processed events are written as Parquet files:
 
@@ -117,7 +108,7 @@ docker exec -it spark-master-kafka-demo \
 
 ```
 df = spark.read.parquet("/opt/spark/data/refined_orders")
-df.show(truncate=False)
+df.groupBy("user_id").sum("amount").show(truncate=False)
 ```
 
 To stop and clean up:
@@ -125,31 +116,7 @@ To stop and clean up:
 docker-compose down
 ```
 
-🧠**What this simple project demonstrates**
+---
 
-- End-to-end streaming pipeline design
-
-- Spark Structured Streaming semantics
-
-- Kafka offset management & fault tolerance
-
-- Dockerized data infrastructure
-
-- Transition from streaming to batch analytics
-
-🧹 **Notes**
-
-- Checkpoint and data directories are not committed to GitHub.
-
-- This project is intended for local development and learning purposes.
-
-📌 **Possible improvements**
-
-- Add schema evolution handling
-
-- Write aggregated output to a database
-
-- Add monitoring with Spark UI & Kafka metrics
-
-- Deploy to cloud storage (S3 / GCS / Azure Blob)
+### Check demo video
 

@@ -118,5 +118,8 @@ docker-compose down
 
 ---
 
-### Check demo video
+### Example plot
+
+<img width="1314" height="750" alt="image" src="https://github.com/user-attachments/assets/93866c94-778e-4d32-84fd-af2ccb907e6e" />
+
 

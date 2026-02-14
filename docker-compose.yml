@@ -2,14 +2,15 @@ version: '3.8'
 
 services:
   kafka:
-    image: apache/kafka
+    image: apache/kafka:latest
     container_name: kafka
+    networks:
+      - data-network
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 10s # Kafka starts before checks begin
+      retries: 5
     volumes:
       - kafka-data:/kafka-logs
     environment:
@@ -28,6 +29,9 @@ services:
   spark-master:
     build: ./spark
     container_name: spark-master-kafka-demo
+    image: spark-custom-image:latest
+    networks:
+      - data-network
     environment:
       - SPARK_MODE=master
     ports:
@@ -35,11 +39,18 @@ services:
       - "7077:7077"
     volumes:
       - ./spark/app:/opt/spark/app
-      - spark-shared-data:/opt/spark/data # Named Volume for Parquet files
+      - spark-shared-data:/opt/spark/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   spark-worker-1:
     build: ./spark
+    image: spark-custom-image:latest
     container_name: spark-worker-1-kafka-demo
+    networks:
+      - data-network
     depends_on:
       - spark-master
     volumes:
@@ -52,7 +63,10 @@ services:
 
   spark-worker-2:
     build: ./spark
+    image: spark-custom-image:latest
     container_name: spark-worker-2-kafka-demo
+    networks:
+      - data-network
     depends_on:
       - spark-master
     volumes:
@@ -63,17 +77,78 @@ services:
       - SPARK_WORKER_CORES=1
       - SPARK_WORKER_MEMORY=1G
 
+  # New Service: Submits the Spark Job automatically when Kafka is healthy
+  spark-submit:
+    build: ./spark
+    image: spark-custom-image:latest
+    container_name: spark-submit-job
+    networks:
+      - data-network
+    depends_on:
+      kafka:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+      influxdb:
+        condition: service_started
+    environment:
+      - SPARK_MODE=submit
+      - SPARK_MASTER=spark://spark-master-kafka-demo:7077
+    volumes:
+      - ./spark/app:/opt/spark/app
+      - spark-shared-data:/opt/spark/data
+
   kafka-producer:
     build: 
       context: .
-      dockerfile: /spark/Dockerfile.producer
+      dockerfile: ./spark/Dockerfile.producer
     container_name: kafka-producer
+    networks:
+      - data-network
     depends_on:
       kafka:
-        condition: service_healthy # Wait for healthcheck
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    networks:
+      - data-network
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password123
+      - DOCKER_INFLUXDB_INIT_ORG=my-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=ecommerce_metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - data-network
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+networks:
+  data-network:
+    driver: bridge
 
 volumes:
   kafka-data:
-  spark-shared-data: 
+  spark-shared-data:
+  influxdb-data:
+  grafana-data:

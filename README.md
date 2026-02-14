@@ -6,7 +6,7 @@ This project implements a simple architecture that provides both a **Hot Path** 
 ## 📐 Architecture & Data Flow
 1. **Ingestion:** A Python producer simulates realistic order events (JSON) and publishes them to the Kafka topic `orders`.
 2. **Processing:** Apache Spark (Structured Streaming) consumes the stream, applying **1-minute Tumbling Windows** and **Watermarking** (2 min) for late data management.
-3. **Hot Path (Monitoring):** Aggregated metrics are pushed to **InfluxDB** for sub-second visualization in **Grafana**.
+3. **Hot Path (Monitoring):** Aggregated metrics are pushed to **InfluxDB** for visualization in **Grafana**.
 4. **Cold Path (Storage):** Raw events are persisted in **Parquet format** (columnar storage) for downstream batch processing and historical analysis.
 
 ## 🧰 Tech Stack

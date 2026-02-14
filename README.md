@@ -1,7 +1,7 @@
 # Real-Time eCommerce Analytics Pipeline
 
 A demo end-to-end data engineering pipeline designed to process e-commerce order streams in real-time. 
-This project implements a **Lambda-style architecture**, providing both a **Hot Path** (Real-time monitoring via InfluxDB & Grafana) and a **Cold Path** (Batch analytics via Parquet Data Lake).
+This project implements a simple architecture that provides both a **Hot Path** (Real-time monitoring via InfluxDB & Grafana) and a **Cold Path** (Batch analytics via Parquet Data Lake).
 
 ## 📐 Architecture & Data Flow
 1. **Ingestion:** A Python producer simulates realistic order events (JSON) and publishes them to the Kafka topic `orders`.

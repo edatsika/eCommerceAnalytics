@@ -5,7 +5,7 @@ USER root
 # Install Python dependencies
 RUN pip install --no-cache-dir pyspark kafka-python
 RUN apt-get update && apt-get install -y rsync && rm -rf /var/lib/apt/lists/*
-
+RUN pip install --no-cache-dir influxdb-client kafka-python-ng pandas pyarrow
 
 WORKDIR /app
 COPY app /app

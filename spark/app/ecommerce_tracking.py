@@ -1,72 +1,101 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, window, sum as _sum
 from pyspark.sql.types import StructType, StringType, DoubleType, TimestampType
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+import os
+import logging
 
-# Kafka topic "orders" receive events like this:
-# {"user_id":"u1","amount":29.99,"timestamp":"2026-02-06T19:10:00"}
+# Setup professional logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("SparkStreamingApp")
 
-spark = SparkSession.builder \
-    .appName("RealTimeEcomAnalytics") \
-    .getOrCreate()
+# InfluxDB Config (από το docker-compose)
+INFLUX_URL = "http://influxdb:8086"
+INFLUX_TOKEN = "my-super-secret-token"
+INFLUX_ORG = "my-org"
+INFLUX_BUCKET = "ecommerce_metrics"
 
-# Construct a StructType by adding new elements to it, to define the schema.
-schema = StructType() \
-    .add("user_id", StringType()) \
-    .add("amount", DoubleType()) \
-    .add("timestamp", TimestampType())
+# Runs for each micro-batch
+# Sends aggregated data to InfluxDB
+def write_to_influx(batch_df, batch_id):
 
-# Read continuously from topic = orders
-# Kafka messages are raw bytes  so Spark converts them into structured rows.
-raw_df = spark.readStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers", "kafka:9092") \
-    .option("subscribe", "orders") \
-    .load()
+    if batch_df.count() == 0:
+        return
 
-# Kafka raw data to DataFrame with given schema
-parsed_df = raw_df.selectExpr("CAST(value AS STRING)") \
-    .select(from_json(col("value"), schema).alias("data")) \
-    .select("data.*")\
-    .filter(col("data").isNotNull())
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    write_api = client.write_api(write_options=SYNCHRONOUS)
+    
+    try:
+        for row in batch_df.collect():
+            # Create point for Grafana
+            point = Point("revenue_stats") \
+                .tag("window_start", str(row['window']['start'])) \
+                .field("total_revenue", float(row['total_revenue']))
+            
+            write_api.write(bucket=INFLUX_BUCKET, record=point)
+        logger.info(f" Batch {batch_id}: Sent {batch_df.count()} points to InfluxDB")
+    except Exception as e:
+        logger.error(f" Error writing to InfluxDB: {e}")
+    finally:
+        client.close()
 
-# Time-Window Aggregation in streaming data --> Spark Structured Streaming
-# Calc sales per minute !!!
+def run_pipeline():
+    spark = SparkSession.builder \
+        .appName("RealTimeEcomAnalytics") \
+        .getOrCreate()
 
-# Watermark: lets Spark handle late data, e.g., wait for data with timestamp up to 2 min older
-# than max observed timestamp, after 2 minutes, window is deleted.
+    # Schema definition
+    schema = StructType() \
+        .add("user_id", StringType()) \
+        .add("amount", DoubleType()) \
+        .add("timestamp", TimestampType())
 
-# Tumbling windows, no overlap like in Sliding windows
-# For each 1 min windows, sum amount, result is DataFrame with window, i.e.,
-# a struct with start and end times, and total_revenue.
-windowed_revenue = parsed_df \
-    .withWatermark("timestamp", "2 minutes") \
-    .groupBy(window(col("timestamp"), "1 minute")) \
-    .agg(_sum("amount").alias("total_revenue"))
+    # 1. Read from Kafka
+    raw_df = spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "kafka:9092") \
+        .option("subscribe", "orders") \
+        .option("startingOffsets", "earliest") \
+        .load()
 
-# Without Watermarking, Spark should keep in memory (State) all windows forever, 
-# in case an old record arrives later. Allow late events up to 2 min.
+    # 2. Parse JSON & Clean
+    parsed_df = raw_df.select(
+        from_json(col("value").cast("string"), schema).alias("data")
+    ).select("data.*").filter(col("user_id").isNotNull())
 
-# Sinks
+    # 3. Transformations: 1-min Windows with 2-min Watermark
+    windowed_revenue = parsed_df \
+        .withWatermark("timestamp", "2 minutes") \
+        .groupBy(window(col("timestamp"), "1 minute")) \
+        .agg(_sum("amount").alias("total_revenue"))
 
-# Without "start", Spark doesn't execute anything.
+    # --- SINKS ---
 
-# Sink A: Console for monitoring, writes sums per minute
-query1 = windowed_revenue.writeStream \
-    .outputMode("complete") \
-    .format("console") \
-    .start()
-# use complete because of groupBy: each time show whole table with aggregated data, testing only
+    # Sink A: Storage (Parquet) - Raw Data Data Lake
+    query_storage = parsed_df.writeStream \
+        .trigger(processingTime='1 minute') \
+        .format("parquet") \
+        .option("path", "/opt/spark/data/refined_orders") \
+        .option("checkpointLocation", "/opt/spark/data/checkpoints/raw_data") \
+        .outputMode("append") \
+        .start()
 
-# Sink B: Storage (Parquet files), writes raw data as they come
-query2 = parsed_df.writeStream \
-    .trigger(processingTime='1 minute') \
-    .format("parquet") \
-    .option("path", "/opt/spark/data/refined_orders") \
-    .option("checkpointLocation", "/opt/spark/data/checkpoints") \
-    .start()
-# Per 1 minute, Spark processes whatever comes from Kafka, otherwise
-# it writes as fast as it can.
-# Checkpoint to restart from offset where it previously stopped.
+    # Sink B: InfluxDB & Console - Real-time Monitoring
+    # Use foreachBatch to send aggregates to InfluxDB
+    query_monitoring = windowed_revenue.writeStream \
+        .foreachBatch(write_to_influx) \
+        .outputMode("update") \
+        .start()
 
-query1.awaitTermination()
-query2.awaitTermination()
+    # Sink C: Console (Optional for debugging)
+    query_console = windowed_revenue.writeStream \
+        .outputMode("update") \
+        .format("console") \
+        .option("truncate", "false") \
+        .start()
+
+    spark.streams.awaitAnyTermination()
+
+if __name__ == "__main__":
+    run_pipeline()

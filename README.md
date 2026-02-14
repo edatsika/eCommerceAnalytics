@@ -18,7 +18,7 @@ This project implements a simple architecture that provides both a **Hot Path** 
 
 ## 📦 Key Engineering Features
 - **Fault Tolerance:** Checkpointing enabled to ensure recovery from the last processed offset in case of failure
-- **Late Data Handling:** Implemented Watermarking to handle out-of-order events and prevent memory leaks
+- **Late Data Handling:** Implemented Watermarking to handle out-of-order events
 - **Automated Orchestration:** Custom entrypoints ensure the Spark job is submitted only when Kafka and InfluxDB are fully healthy
 - **Resource Management:** Optimized Docker resource limits for local development
 

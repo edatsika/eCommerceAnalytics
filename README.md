@@ -118,9 +118,37 @@ docker-compose down
 
 ---
 
-### Example plot
+### 🎬 Scenario Simulation & Watermarking Demo
+To verify the pipeline's robustness, specifically its Watermarking and Late Data Handling capabilities, a simulation script is provided in kafka/demo_events.py. This script bypasses the random generator to send high-impact, specific events.
+What the Demo Does:
+The script injects three distinct types of events to showcase Spark's state management:
 
-<img width="657" height="375" alt="image" src="https://github.com/user-attachments/assets/93866c94-778e-4d32-84fd-af2ccb907e6e" />
+- **NORMAL** Event: Sent with a current timestamp. Spark processes this immediately, updating the current window bar in Grafana.
+- **LATE_BUT_OK** Event: Sent with a 1-minute old timestamp. Since our Watermark is set to 2 minutes, Spark accepts this event and updates the previous window in the dashboard.
+- **TOO_LATE** Event: Sent with a 5-minute old timestamp. Spark identifies this as "too late" (outside the watermark) and drops it.
+
+How to Run the Demo:
+
+1. Ensure the pipeline is running:
+    ```
+    docker-compose up -d
+    ```
+2. Monitor the Spark Engine (Terminal A):
+    ```
+   docker logs -f spark-submit-job
+    ```
+3. Execute the Simulation Script (Terminal B):
+    ```
+   # Option A: Running from host (requires kafka-python-ng installed)
+    python kafka/demo_events.py
+
+    # Option B: Running via Docker (No local setup required)
+    docker cp kafka/demo_events.py kafka-producer:/app/
+    docker exec -it kafka-producer python /app/demo_events.py
+    ```
+
+5. Observe Grafana:
+   Watch the dashboard at http://localhost:3000. You will see massive "spikes" in the bars, confirming that the high-value demo events were processed and correctly assigned to their respective time windows.
 
 <img width="869" height="502" alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" />
 

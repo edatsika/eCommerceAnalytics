@@ -150,5 +150,9 @@ How to Run the Demo:
 5. Observe Grafana:
    Watch the dashboard at http://localhost:3000. You will see massive "spikes" in the bars, confirming that the high-value demo events were processed and correctly assigned to their respective time windows.
 
-<img width="869" height="502" alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" />
+<p align="center">
+<img alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" width="70%" />
+</p>
+
+<img width="869" height="502" width="70%" alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" />
 

@@ -120,6 +120,7 @@ docker-compose down
 
 ### Example plot
 
-<img width="1314" height="750" alt="image" src="https://github.com/user-attachments/assets/93866c94-778e-4d32-84fd-af2ccb907e6e" />
+<img width="657" height="375" alt="image" src="https://github.com/user-attachments/assets/93866c94-778e-4d32-84fd-af2ccb907e6e" />
 
+<img width="869" height="502" alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" />
 

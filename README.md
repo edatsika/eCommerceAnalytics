@@ -154,5 +154,4 @@ How to Run the Demo:
 <img alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" width="70%" />
 </p>
 
-<img width="869" height="502" width="70%" alt="image" src="https://github.com/user-attachments/assets/3d5a426e-5c17-4022-9ec2-fc1b4f41770c" />
 
